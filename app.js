@@ -2,13 +2,15 @@ import * as THREE from "https://esm.sh/three@0.133.1/build/three.module";
 import {OrbitControls} from "https://esm.sh/three@0.133.1/examples/jsm/controls/OrbitControls";
 const blob = document.getElementById("blob");
 
-window.onpointermove = event => { 
-  const { clientX, clientY } = event;
-  
-  blob.animate({
-    left: `${clientX}px`,
-    top: `${clientY}px`
-  }, { duration: 5000, fill: "forwards" });
+if (blob) {
+    window.onpointermove = event => {
+        const { clientX, clientY } = event;
+
+        blob.animate({
+            left: `${clientX}px`,
+            top: `${clientY}px`
+        }, { duration: 5000, fill: "forwards" });
+    };
 }
 const containerEl = document.querySelector(".globe-wrapper");
 const canvas3D = containerEl.querySelector("#globe-3d");
@@ -440,7 +442,7 @@ function deserialize(data){
     throw new Error('Invalid FeedMessage.Data');
   }
 
-  const messages = new Array<Message>(json.length / 2);
+  const messages = new Array(json.length / 2);
 
   for (const index of messages.keys()) {
     const [action, payload] = json.slice(index * 2);
