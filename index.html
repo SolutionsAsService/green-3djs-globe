@@ -1,0 +1,292 @@
+
+    <script src="script.js"></script>
+ <style>
+	body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.page {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.title {
+	 position: fixed;
+	 bottom: 10%;
+	 left: 0;
+	 width: 100%;
+	 text-align: center;
+	 font-family: sans-serif;
+}
+
+#globe-3d, #globe-2d-overlay, #globe-popup-overlay, .globe-popup {
+    display: block;
+    position: absolute;
+	
+}
+
+#globe-2d-overlay, #globe-popup-overlay {
+    pointer-events: auto;
+
+	    color: #00ffe7;
+
+}
+
+.globe-popup {
+    top: 0;
+    left: 0;
+    background-color: black;
+    opacity: 0;
+    color: #00ffe7;
+    font-family: sans-serif;
+    padding: 5px 10px;
+    font-size: 15px;
+    border-radius: 3px;
+    filter: drop-shadow(0px 0px 3px #00ffcc);
+}
+</style>
+<div class="page">   
+
+    <div class="globe-wrapper">
+        <canvas id="globe-3d"></canvas><div class="screen-overlay"></div> 
+        <canvas id="globe-2d-overlay"></canvas>
+        <div id="globe-popup-overlay">
+            <div class="globe-popup"></div>
+        </div>
+    </div>
+</div>
+
+<script type="x-shader/x-fragment" id="fragment-shader-map">
+    uniform sampler2D u_map_tex;
+
+    varying float vOpacity;
+    varying vec2 vUv;
+
+   void main() {
+    vec3 color = texture2D(u_map_tex, vUv).rgb;
+    // Reduce the base color's intensity to darken the globe
+    color *= 0.8;
+
+    // Calculate the gradient based on the distance from the center
+    float distance = length(gl_PointCoord.xy - vec2(0.5));
+    color = mix(color, vec3(0.25, 0.88, 0.82), 1.0 - distance); // Mix turquoise based on distance
+
+    // Adjust the dot to create a more prominent glow effect
+    float dot = 1.0 - smoothstep(0.3, 0.5, distance);
+
+    // Use the modified color and dot for the final color, incorporating the opacity
+    gl_FragColor = vec4(color, dot * vOpacity);
+}
+
+</script>
+
+<script type="x-shader/x-vertex" id="vertex-shader-map">
+    uniform sampler2D u_map_tex;
+    uniform float u_dot_size;
+    uniform float u_time_since_click;
+    uniform vec3 u_pointer;
+
+    #define PI 3.14159265359
+
+    varying float vOpacity;
+    varying vec2 vUv;
+
+    void main() {
+
+        vUv = uv;
+
+        // mask with world map
+        float visibility = step(.2, texture2D(u_map_tex, uv).r);
+        gl_PointSize = visibility * u_dot_size;
+
+        // make back dots semi-transparent
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vOpacity = (1. / length(mvPosition.xyz) - .7);
+        vOpacity = clamp(vOpacity, .03, 1.);
+
+        // add ripple
+        float t = u_time_since_click - .1;
+        t = max(0., t);
+        float max_amp = .15;
+        float dist = 1. - .5 * length(position - u_pointer); // 0 .. 1
+        float damping = 1. / (1. + 20. * t); // 1 .. 0
+        float delta = max_amp * damping * sin(5. * t * (1. + 2. * dist) - PI);
+        delta *= 1. - smoothstep(.8, 1., dist);
+        vec3 pos = position;
+        pos *= (1. + delta);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
+    }
+</script>
+<style>
+	body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+	background: #060606;
+}
+
+.page {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.title {
+	 position: fixed;
+	 bottom: 10%;
+	 left: 0;
+	 width: 100%;
+	 text-align: center;
+	 font-family: sans-serif;
+}
+
+#globe-3d, #globe-2d-overlay, #globe-popup-overlay, .globe-popup {
+    display: block;
+    position: absolute;
+}
+
+#globe-2d-overlay, #globe-popup-overlay {
+    pointer-events: auto;
+}
+
+.globe-popup {
+    top: 0;
+    left: 0;
+    background-color: black;
+    opacity: 0;
+    color: #00ffcc;
+    font-family: sans-serif;
+    padding: 5px 10px;
+    font-size: 15px;
+    border-radius: 3px;
+    filter: drop-shadow(0px 0px 3px #555555);
+}
+.globe-wrapper {
+  position: relative;
+  width: 500px; /* adjust as needed */
+  height: 500px; /* adjust as needed */
+}
+
+#globe-3d, #globe-2d-overlay, #globe-popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.globe-glow {
+  position: absolute;
+  inset: 0;
+  background-color: #00ffe7;
+  opacity: 0.1; /* subtle glow opacity */
+  filter: blur(50px); /* subtle, soft blur */
+  border-radius: 50%;
+  pointer-events: none; /* allows interactions to pass through */
+  transform: scale(0.85); /* smaller subtle glow behind globe */
+}
+
+</style>
+
+
+<div id="blob"></div>
+<div id="blur"><div class="grid">
+  <svg class="grid-svg" xmlns="http://www.w3.org/2000/svg" width="982" height="786" viewBox="0 0 982 786" fill="none">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M490 401V537H348.5V401H490ZM490 785.5V676H348.5V785.5H347.5V676H206V785.5H205V676H63.5V785.5H62.5V676H0V675H62.5V538H0V537H62.5V401H0V400H62.5V258H0V257H62.5V116H0V115H62.5V0H63.5V115L205 115V0H206V115L347.5 115V0H348.5V115H490V0H491V115L627.5 115V0H628.5V115H765V0H766V115L902.5 115V0H903.5V115H982V116H903.5V257H982V258H903.5V400H982V401H903.5V537H982V538H903.5V675H982V676H903.5V785.5H902.5V676H766V785.5H765V676H628.5V785.5H627.5V676H491V785.5H490ZM902.5 675V538H766V675H902.5ZM902.5 537V401H766V537H902.5ZM902.5 400V258H766V400H902.5ZM902.5 257V116L766 116V257H902.5ZM627.5 675H491V538H627.5V675ZM765 675H628.5V538H765V675ZM348.5 675H490V538H348.5V675ZM347.5 538V675H206V538H347.5ZM205 538V675H63.5V538H205ZM765 537V401H628.5V537H765ZM765 400V258H628.5V400H765ZM765 257V116H628.5V257H765ZM347.5 401V537H206V401H347.5ZM205 401V537H63.5V401H205ZM627.5 401V537H491V401H627.5ZM627.5 116L491 116V257H627.5V116ZM627.5 258H491V400H627.5V258ZM63.5 257V116L205 116V257H63.5ZM63.5 400V258H205V400H63.5ZM206 116V257H347.5V116L206 116ZM348.5 116V257H490V116H348.5ZM206 400V258H347.5V400H206ZM348.5 258V400H490V258H348.5Z" fill="url(#paint0_radial_1_8)" />
+    <defs>
+      <radialGradient id="paint0_radial_1_8" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(491 392.75) rotate(90) scale(513.25 679.989)">
+        <stop stop-color="white" stop-opacity="0.2" />
+        <stop offset="1" stop-color="#000" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+  </svg></div>
+<div class="page">
+
+  <div class="meta-link">  
+    <span class="label">Glowy Blob Effect</span>
+    <span class="dot">·</span>
+    <a class="source" href="https://www.poppr.be" target="_blank">
+      <i class="fa-solid fa-link"></i>
+    </a>
+    <span class="dot">·</span>
+    <a class="youtube" href="https://youtu.be/kySGqoU7X-s" target="_blank">
+      <i class="fa-brands fa-youtube"></i>
+    </a>
+  </div>    <div class="globe-wrapper">
+        <canvas id="globe-3d"></canvas>
+        <canvas id="globe-2d-overlay"></canvas>
+        <div id="globe-popup-overlay">
+            <div class="globe-popup"></div>
+        </div>
+    </div>
+</div>
+<script type="x-shader/x-fragment" id="fragment-shader-map">
+    uniform sampler2D u_map_tex;
+
+    varying float vOpacity;
+    varying vec2 vUv;
+
+   void main() {
+    vec3 color = texture2D(u_map_tex, vUv).rgb;
+    // Reduce the base color's intensity to darken the globe
+    color *= 0.8;
+
+    // Calculate the gradient based on the distance from the center
+    float distance = length(gl_PointCoord.xy - vec2(0.5));
+    color = mix(color, vec3(0.25, 0.88, 0.82), 1.0 - distance); // Mix turquoise based on distance
+
+    // Adjust the dot to create a more prominent glow effect
+    float dot = 1.0 - smoothstep(0.3, 0.5, distance);
+
+    // Use the modified color and dot for the final color, incorporating the opacity
+    gl_FragColor = vec4(color, dot * vOpacity);
+}
+
+</script>
+
+<script type="x-shader/x-vertex" id="vertex-shader-map">
+    uniform sampler2D u_map_tex;
+    uniform float u_dot_size;
+    uniform float u_time_since_click;
+    uniform vec3 u_pointer;
+
+    #define PI 3.14159265359
+
+    varying float vOpacity;
+    varying vec2 vUv;
+
+    void main() {
+
+        vUv = uv;
+
+        // mask with world map
+        float visibility = step(.2, texture2D(u_map_tex, uv).r);
+        gl_PointSize = visibility * u_dot_size;
+
+        // make back dots semi-transparent
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vOpacity = (1. / length(mvPosition.xyz) - .7);
+        vOpacity = clamp(vOpacity, .03, 1.);
+
+        // add ripple
+        float t = u_time_since_click - .1;
+        t = max(0., t);
+        float max_amp = .15;
+        float dist = 1. - .5 * length(position - u_pointer); // 0 .. 1
+        float damping = 1. / (1. + 20. * t); // 1 .. 0
+        float delta = max_amp * damping * sin(5. * t * (1. + 2. * dist) - PI);
+        delta *= 1. - smoothstep(.8, 1., dist);
+        vec3 pos = position;
+        pos *= (1. + delta);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
+    }
+</script>
+				 <div className="absolute inset-0 bg-teal-400 opacity-20 filter blur-3xl" />
