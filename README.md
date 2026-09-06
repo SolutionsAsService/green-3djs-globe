@@ -1,1 +1,1 @@
-code lifted from fuitbox12 RIP
+code lifted from fruitbox12 RIP
