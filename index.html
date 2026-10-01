@@ -4,59 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Green 3D Globe</title>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="themes.css">
 <script type="module" src="app.js"></script>
- <style>
-	body {
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-}
 
-.page {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-}
-
-.title {
-	 position: fixed;
-	 bottom: 10%;
-	 left: 0;
-	 width: 100%;
-	 text-align: center;
-	 font-family: sans-serif;
-}
-
-#globe-3d, #globe-2d-overlay, #globe-popup-overlay, .globe-popup {
-    display: block;
-    position: absolute;
-	
-}
-
-#globe-2d-overlay, #globe-popup-overlay {
-    pointer-events: auto;
-
-	    color: #00ffe7;
-
-}
-
-.globe-popup {
-    top: 0;
-    left: 0;
-    background-color: black;
-    opacity: 0;
-    color: #00ffe7;
-    font-family: sans-serif;
-    padding: 5px 10px;
-    font-size: 15px;
-    border-radius: 3px;
-    filter: drop-shadow(0px 0px 3px #00ffcc);
-}
-</style>
 <script type="x-shader/x-fragment" id="fragment-shader-map">
     uniform sampler2D u_map_tex;
 
@@ -121,77 +73,17 @@
 </script>
 </head>
 <body>
+<nav class="theme-controls" aria-label="Globe appearance">
+  <label for="theme-select">Theme</label>
+  <select id="theme-select">
+    <option value="green">Green</option>
+    <option value="autheo">Autheo</option>
+    <option value="white">White</option>
+  </select>
+</nav>
+<p id="globe-status" role="status">Loading globe…</p>
 
-<style>
-	body {
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-	background: #060606;
-}
 
-.page {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.title {
-	 position: fixed;
-	 bottom: 10%;
-	 left: 0;
-	 width: 100%;
-	 text-align: center;
-	 font-family: sans-serif;
-}
-
-#globe-3d, #globe-2d-overlay, #globe-popup-overlay, .globe-popup {
-    display: block;
-    position: absolute;
-}
-
-#globe-2d-overlay, #globe-popup-overlay {
-    pointer-events: auto;
-}
-
-.globe-popup {
-    top: 0;
-    left: 0;
-    background-color: black;
-    opacity: 0;
-    color: #00ffcc;
-    font-family: sans-serif;
-    padding: 5px 10px;
-    font-size: 15px;
-    border-radius: 3px;
-    filter: drop-shadow(0px 0px 3px #555555);
-}
-.globe-wrapper {
-  position: relative;
-  width: 500px; /* adjust as needed */
-  height: 500px; /* adjust as needed */
-}
-
-#globe-3d, #globe-2d-overlay, #globe-popup-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-.globe-glow {
-  position: absolute;
-  inset: 0;
-  background-color: #00ffe7;
-  opacity: 0.1; /* subtle glow opacity */
-  filter: blur(50px); /* subtle, soft blur */
-  border-radius: 50%;
-  pointer-events: none; /* allows interactions to pass through */
-  transform: scale(0.85); /* smaller subtle glow behind globe */
-}
-
-</style>
 
 
 <div id="blob"></div>
@@ -208,18 +100,19 @@
 </div>
 <div class="page">
 
-  <div class="meta-link">  
+  <div class="meta-link">
     <span class="label">Glowy Blob Effect</span>
     <span class="dot">·</span>
-    <a class="source" href="https://www.poppr.be" target="_blank">
-      <i class="fa-solid fa-link"></i>
+    <a class="source" href="https://www.poppr.be" target="_blank" rel="noopener noreferrer">
+      Source
     </a>
     <span class="dot">·</span>
-    <a class="youtube" href="https://youtu.be/kySGqoU7X-s" target="_blank">
-      <i class="fa-brands fa-youtube"></i>
+    <a class="youtube" href="https://youtu.be/kySGqoU7X-s" target="_blank" rel="noopener noreferrer">
+      Video
     </a>
   </div>    <div class="globe-wrapper">
         <div class="globe-glow"></div>
+        <div class="screen-overlay" aria-hidden="true"></div>
         <canvas id="globe-3d"></canvas>
         <canvas id="globe-2d-overlay"></canvas>
         <div id="globe-popup-overlay">

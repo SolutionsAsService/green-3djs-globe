@@ -1,0 +1,33 @@
+/* Keep the original globe, grid and glow; only repair layout and theme wiring. */
+:root {
+    --globe-accent: #00ffe7;
+    --popup-background: #000;
+    --popup-text: #00ffcc;
+    color-scheme: dark;
+}
+body { margin: 0; padding: 0; background: #060606; overflow: hidden; }
+.page { position: relative; width: 100%; height: 100vh; height: 100dvh; display: flex; align-items: center; justify-content: center; }
+#blob, #blur, .grid, .screen-overlay { pointer-events: none; }
+#blob { position: fixed; z-index: 0; }
+#blur { position: fixed; inset: 0; z-index: 0; }
+.grid { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.grid-svg { max-width: 100%; max-height: 100%; }
+.globe-wrapper { position: relative; width: 65vmin; height: 65vmin; }
+#globe-3d, #globe-2d-overlay, #globe-popup-overlay { position: absolute; top: 0; left: 0; display: block; }
+#globe-3d { touch-action: none; }
+#globe-2d-overlay, #globe-popup-overlay, .globe-popup { pointer-events: none; }
+.globe-glow { position: absolute; inset: 0; border-radius: 50%; background: var(--globe-accent); opacity: .1; filter: blur(50px); transform: scale(.85); pointer-events: none; }
+.globe-popup { position: absolute; top: 0; left: 0; opacity: 0; white-space: nowrap; background: var(--popup-background); color: var(--popup-text); font: 15px sans-serif; padding: 5px 10px; border-radius: 3px; filter: drop-shadow(0 0 3px #555); }
+.screen-overlay { display: none; }
+.meta-link { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.meta-link > .label { width: auto; }
+.theme-controls { position: fixed; top: 16px; right: 16px; z-index: 5; display: flex; align-items: center; gap: 10px; font: 14px sans-serif; color: var(--popup-text); }
+.theme-controls select { min-height: 44px; padding: 8px 28px 8px 12px; border: 1px solid var(--popup-text); border-radius: 6px; background: var(--popup-background); color: var(--popup-text); font: inherit; cursor: pointer; }
+.theme-controls select:focus-visible { outline: 2px solid var(--globe-accent); outline-offset: 3px; }
+#globe-status { position: fixed; top: 80px; left: 16px; right: 16px; text-align: center; font: 14px sans-serif; color: var(--popup-text); z-index: 4; }
+[data-theme="autheo"] .screen-overlay { display: block; }
+[data-theme="white"] { color-scheme: light; --popup-background: white; --popup-text: #111; }
+[data-theme="white"] body { background: white; color: #111; }
+[data-theme="white"] body::before, [data-theme="white"] #blob, [data-theme="white"] #blur, [data-theme="white"] .globe-glow { display: none; }
+[data-theme="white"] .meta-link > :is(span, a) { color: #333; }
+@media (max-width: 420px) { .meta-link { gap: 6px; } .meta-link > :is(span, a) { font-size: 12px; } }

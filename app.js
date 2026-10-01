@@ -1,5 +1,5 @@
-import * as THREE from "https://esm.sh/three@0.133.1/build/three.module";
-import {OrbitControls} from "https://esm.sh/three@0.133.1/examples/jsm/controls/OrbitControls";
+import * as THREE from "./vendor/three.module.js";
+import {OrbitControls} from "./vendor/OrbitControls.js";
 const blob = document.getElementById("blob");
 
 if (blob) {
@@ -27,14 +27,58 @@ let earthTexture, mapMaterial;
 let popupOpenTl, popupCloseTl;
 
 let dragged = false;
+let hasSelection = false;
+const statusEl = document.getElementById("globe-status");
+const themeSelect = document.getElementById("theme-select");
+const themes = {
+    green: {mesh: 0x00fff8, opacity: .04, pointer: 0x00ffaa, connector: "#ffb700"},
+    autheo: {mesh: 0x00fff8, opacity: .04, pointer: 0x00ffaa, connector: "#ffb700"},
+    white: {mesh: 0x222222, opacity: .05, pointer: 0x000000, connector: "#000000"}
+};
+let savedTheme;
+try { savedTheme = localStorage.getItem("globe-theme"); } catch { /* Storage may be disabled. */ }
+let currentTheme = new URLSearchParams(location.search).get("theme") || savedTheme || "green";
+if (!Object.hasOwn(themes, currentTheme)) currentTheme = "green";
+applyTheme(currentTheme);
+themeSelect.addEventListener("change", () => {
+    applyTheme(themeSelect.value);
+    const url = new URL(location.href);
+    url.searchParams.set("theme", currentTheme);
+    history.replaceState(null, "", url);
+});
 
-initScene();
+function applyTheme(name) {
+    if (!Object.hasOwn(themes, name)) return;
+    currentTheme = name;
+    document.documentElement.dataset.theme = name;
+    themeSelect.value = name;
+    try { localStorage.setItem("globe-theme", name); } catch { /* Keep in-memory switching usable. */ }
+    const theme = themes[name];
+    if (globeMesh) {
+        globeMesh.material.color.setHex(theme.mesh);
+        globeMesh.material.opacity = theme.opacity;
+        pointer.material.color.setHex(theme.pointer);
+    }
+}
+
+function showLoadError(message) {
+    statusEl.textContent = message;
+    statusEl.hidden = false;
+    containerEl.dataset.state = "error";
+}
+
+try {
+    initScene();
+} catch (error) {
+    showLoadError("The globe could not start. Check that WebGL is enabled, then reload.");
+    console.error(error);
+}
 window.addEventListener("resize", updateSize);
 
 
 function initScene() {
     renderer = new THREE.WebGLRenderer({canvas: canvas3D, alpha: true});
-	renderer.setPixelRatio(2);
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
     scene = new THREE.Scene();
     camera = new THREE.OrthographicCamera(-1.1, 1.1, 1.1, -1.1, 0, 3);
@@ -51,7 +95,7 @@ function initScene() {
 
     new THREE.TextureLoader().load(
         //"https://raw.githubusercontent.com/fruitbox12/workflowFunction/main/as.jpg",
-		 "https://ksenia-k.com/img/earth-map-colored.png",
+		 "./assets/earth-map-colored.png",
         (mapTex) => {
             earthTexture = mapTex;
             earthTexture.repeat.set(1, 1);
@@ -60,7 +104,12 @@ function initScene() {
             createPopupTimelines();
             addCanvasEvents();
             updateSize();
+            applyTheme(currentTheme);
             render();
+            statusEl.hidden = true;
+            containerEl.dataset.state = "ready";
+        }, undefined, () => {
+            showLoadError("The map image could not load. Check your connection, then reload.");
         });
 }
 
@@ -74,13 +123,16 @@ function createOrbitControls() {
     controls.maxPolarAngle = .4 * Math.PI;
     controls.autoRotate = true;
 
-    let timestamp;
-    controls.addEventListener("start", () => {
-        timestamp = Date.now();
+    let dragStart;
+    canvas3D.addEventListener("pointerdown", (event) => {
+        dragged = false;
+        dragStart = {x: event.clientX, y: event.clientY};
     });
-    controls.addEventListener("end", () => {
-        dragged = (Date.now() - timestamp) > 600;
+    canvas3D.addEventListener("pointermove", (event) => {
+        if (dragStart && Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) > 5) dragged = true;
     });
+    canvas3D.addEventListener("pointerup", () => { dragStart = null; });
+    canvas3D.addEventListener("pointercancel", () => { dragStart = null; dragged = true; });
 }
 
 function createGlobe() {
@@ -117,6 +169,7 @@ function createPointer() {
         opacity: 0.5
     });
     pointer = new THREE.Mesh(geometry, material);
+    pointer.visible = false;
     scene.add(pointer);
 }
 
@@ -181,9 +234,11 @@ function addCanvasEvents() {
 
             const res = checkIntersects();
             if (res.length) {
-                pointerPos = res[0].face.normal.clone();
-                pointer.position.set(res[0].face.normal.x, res[0].face.normal.y, res[0].face.normal.z);
-                mapMaterial.uniforms.u_pointer.value = res[0].face.normal;
+                hasSelection = true;
+                pointer.visible = true;
+                pointerPos = res[0].point.clone().normalize();
+                pointer.position.copy(pointerPos);
+                mapMaterial.uniforms.u_pointer.value.copy(pointerPos);
                 popupEl.innerHTML = cartesianToLatLong();
                 showPopupAnimation(true);
                 clock.start()
@@ -192,8 +247,9 @@ function addCanvasEvents() {
     });
 
     function updateMousePosition(eX, eY) {
-        mouse.x = (eX - containerEl.offsetLeft) / containerEl.offsetWidth * 2 - 1;
-        mouse.y = -((eY - containerEl.offsetTop) / containerEl.offsetHeight) * 2 + 1;
+        const rect = canvas3D.getBoundingClientRect();
+        mouse.x = (eX - rect.left) / rect.width * 2 - 1;
+        mouse.y = -((eY - rect.top) / rect.height) * 2 + 1;
     }
 }
 
@@ -201,9 +257,9 @@ function checkIntersects() {
     rayCaster.setFromCamera(mouse, camera);
     const intersects = rayCaster.intersectObject(globeMesh);
     if (intersects.length) {
-        document.body.style.cursor = "pointer";
+        canvas3D.style.cursor = "pointer";
     } else {
-        document.body.style.cursor = "auto";
+        canvas3D.style.cursor = "auto";
     }
     return intersects;
 }
@@ -211,7 +267,7 @@ function checkIntersects() {
 function render() {
     mapMaterial.uniforms.u_time_since_click.value = clock.getElapsedTime();
     checkIntersects();
-    if (pointer) {
+    if (hasSelection) {
         updateOverlayGraphic();
     }
     controls.update();
@@ -220,12 +276,13 @@ function render() {
 }
 
 function updateSize() {
+    if (!renderer) return;
     const minSide = .65 * Math.min(window.innerWidth, window.innerHeight);
     containerEl.style.width = minSide + "px";
     containerEl.style.height = minSide + "px";
     renderer.setSize(minSide, minSide);
     canvas2D.width = canvas2D.height = minSide;
-    mapMaterial.uniforms.u_dot_size.value = .04 * minSide;
+    if (mapMaterial) mapMaterial.uniforms.u_dot_size.value = .04 * minSide * renderer.getPixelRatio() / 2;
 }
 
 
@@ -309,7 +366,7 @@ function showPopupAnimation(lifted) {
 
 // overlay (line between pointer and popup)
 function drawPopupConnector(startX, startY, midX, midY, endX, endY) {
-    overlayCtx.strokeStyle = "#ffb700";
+    overlayCtx.strokeStyle = themes[currentTheme].connector;
     overlayCtx.lineWidth = 3;
     overlayCtx.lineCap = "round";
     overlayCtx.clearRect(0, 0, containerEl.offsetWidth, containerEl.offsetHeight);
@@ -413,7 +470,8 @@ websocket.onmessage = async (event) => {
     };
 }
 
-fetchValidatorNodes(); // Fetch and display Polkadot validator nodes
+// The original telemetry experiment is opt-in; basic display must not depend on it.
+if (new URLSearchParams(location.search).get("telemetry") === "1") fetchValidatorNodes();
 const parse = (val) => {
   try {
 	  	  console.log(JSON.parse(val.data))
